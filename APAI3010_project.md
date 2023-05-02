@@ -2,8 +2,8 @@
 Firstly setup NeRF according to original paper readme
 
 # For calculate metrics
-We changed run_nerf.py to be able to save numerical metrics in a .txt file
-Add two flags `--render_only --render_test` to the command
+- We changed run_nerf.py to be able to save numerical metrics in a .txt file
+- Add two flags `--render_only --render_test` to the command
 
 # Reproduction
 
