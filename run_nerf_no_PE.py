@@ -8,7 +8,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm, trange
-import torchvision.transforms as transforms
 
 import matplotlib.pyplot as plt
 
@@ -18,10 +17,6 @@ from load_llff import load_llff_data
 from load_deepvoxels import load_dv_data
 from load_blender import load_blender_data
 from load_LINEMOD import load_LINEMOD_data
-
-from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-from torchmetrics.functional import peak_signal_noise_ratio
-from torchmetrics import StructuralSimilarityIndexMeasure
 
 
 np.random.seed(0)
@@ -162,17 +157,8 @@ def render_path(
     gt_imgs=None,
     savedir=None,
     render_factor=0,
-    save_metrics=False,
 ):
     H, W, focal = hwf
-
-    if save_metrics:
-        psnr = 0
-        ssim = 0
-        ssim_fn = StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
-        lpips = 0
-        lpips_fn = LearnedPerceptualImagePatchSimilarity(net_type="vgg").to(device)
-        to_tensor = transforms.ToTensor()
 
     if render_factor != 0:
         # Render downsampled for speed
@@ -200,31 +186,11 @@ def render_path(
             p = -10. * np.log10(np.mean(np.square(rgb.cpu().numpy() - gt_imgs[i])))
             print(p)
         """
+
         if savedir is not None:
             rgb8 = to8b(rgbs[-1])
-            if save_metrics:
-                gt_img = to_tensor(gt_imgs[i])
-                gt_img = gt_img.unsqueeze(0).to(device, dtype=torch.float)
-
-                normalized_rgb8 = to_tensor(rgb8 / 255.0)
-                normalized_rgb8 = normalized_rgb8.unsqueeze(0).to(
-                    device, dtype=torch.float
-                )
-                psnr += peak_signal_noise_ratio(normalized_rgb8, gt_img)
-                ssim += ssim_fn(normalized_rgb8, gt_img)
-                lpips += lpips_fn(normalized_rgb8, gt_img)
             filename = os.path.join(savedir, "{:03d}.png".format(i))
             imageio.imwrite(filename, rgb8)
-
-    if save_metrics:
-        psnr /= len(gt_imgs)
-        ssim /= len(gt_imgs)
-        lpips /= len(gt_imgs)
-        if savedir is not None:
-            filename = os.path.join(savedir, "_test_metrics.txt")
-            with open(filename, "w") as f:
-                f.write(f"psnr: {psnr}\nssim: {ssim}\nlpips:{lpips}\n")
-            f.close()
 
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
@@ -549,12 +515,6 @@ def config_parser():
         default=32 * 32 * 4,
         help="batch size (number of random rays per gradient step)",
     )
-    parser.add_argument(
-        "--N_iters",
-        type=int,
-        default=200000,
-        help="numbers of training iteration",
-    )
     parser.add_argument("--lrate", type=float, default=5e-4, help="learning rate")
     parser.add_argument(
         "--lrate_decay",
@@ -726,17 +686,14 @@ def config_parser():
     parser.add_argument(
         "--i_print",
         type=int,
-        default=10000,
+        default=100,
         help="frequency of console printout and metric loggin",
     )
     parser.add_argument(
-        "--i_img",
-        type=int,
-        default=10000,
-        help="frequency of tensorboard image logging",
+        "--i_img", type=int, default=500, help="frequency of tensorboard image logging"
     )
     parser.add_argument(
-        "--i_weights", type=int, default=50000, help="frequency of weight ckpt saving"
+        "--i_weights", type=int, default=10000, help="frequency of weight ckpt saving"
     )
     parser.add_argument(
         "--i_testset", type=int, default=50000, help="frequency of testset saving"
@@ -744,7 +701,7 @@ def config_parser():
     parser.add_argument(
         "--i_video",
         type=int,
-        default=100000,
+        default=50000,
         help="frequency of render_poses video saving",
     )
 
@@ -913,12 +870,11 @@ def train():
                 gt_imgs=images,
                 savedir=testsavedir,
                 render_factor=args.render_factor,
-                save_metrics=True,
             )
             print("Done rendering", testsavedir)
-            # imageio.mimwrite(
-            #     os.path.join(testsavedir, "video.mp4"), to8b(rgbs), fps=30, quality=8
-            # )
+            imageio.mimwrite(
+                os.path.join(testsavedir, "video.mp4"), to8b(rgbs), fps=30, quality=8
+            )
 
             return
 
@@ -950,7 +906,7 @@ def train():
     if use_batching:
         rays_rgb = torch.Tensor(rays_rgb).to(device)
 
-    N_iters = args.N_iters + 1
+    N_iters = 200000 + 1
     print("Begin")
     print("TRAIN views are", i_train)
     print("TEST views are", i_test)

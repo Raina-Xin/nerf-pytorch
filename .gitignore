@@ -6,4 +6,5 @@
 *.npz
 *.dae
 data/*
+GP_data/*
 logs/*

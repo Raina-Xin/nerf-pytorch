@@ -1036,13 +1036,13 @@ def train():
         )
 
         optimizer.zero_grad()
-        img_loss = img2mse(rgb, target_s)
+        img_loss = img2mae(rgb, target_s)
         trans = extras["raw"][..., -1]
         loss = img_loss
         psnr = mse2psnr(img_loss)
 
         if "rgb0" in extras:
-            img_loss0 = img2mse(extras["rgb0"], target_s)
+            img_loss0 = img2mae(extras["rgb0"], target_s)
             loss = loss + img_loss0
             psnr0 = mse2psnr(img_loss0)
 
