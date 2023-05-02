@@ -53,8 +53,8 @@ python run_nerf.py --datadir ./GP_data/Channel1 --expname gp_channel --config co
 ```
 
 # loss function
-We changed loss function in run_nerf_helpers.py
-Following are commands for different loss function:
+- We changed loss function in run_nerf_helpers.py
+- Following are commands for different loss function:
 ## MSE
 ```
 python run_nerf.py --datadir ./GP_data/Channel1 --expname gp_channel_mse --config configs/channel.txt --render_only 
